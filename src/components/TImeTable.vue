@@ -63,13 +63,6 @@
         </tbody>
       </table>
     </div>
-
-    <!-- Global Fixed Bottom Bar -->
-    <div class="global-footer">
-      <button :class="['nav-btn', currentPage === 'meal' ? 'active' : '']" @click="currentPage = 'meal'">급식</button>
-      <button :class="['nav-btn', currentPage === 'timetable' ? 'active' : '']" @click="currentPage = 'timetable'">시간표</button>
-      <button :class="['nav-btn', currentPage === 'calendar' ? 'active' : '']" @click="currentPage = 'calendar'">학사일정</button>
-    </div>
   </div>
 </template>
 
@@ -83,13 +76,12 @@ const classOptions = ref([])
 const timetable = ref([])
 const memos = ref([])
 
-const currentPage = ref('timetable')
-
 const isWeekend = computed(() => {
   const day = new Date(selectedDate.value).getDay()
-  return day === 0 || day === 6
+  return day === 0 || day === 6 // 일요일 or 토요일
 })
 
+// 학년이 바뀔 때 반 개수 설정
 watch(selectedGrade, (newGrade) => {
   if (newGrade === '1' || newGrade === '2') {
     classOptions.value = Array.from({ length: 13 }, (_, i) => (i + 1).toString())
@@ -101,6 +93,7 @@ watch(selectedGrade, (newGrade) => {
   selectedClass.value = ''
 })
 
+// 시간표 불러오기
 const fetchTimeTable = async () => {
   if (!selectedGrade.value || !selectedClass.value) return
   if (isWeekend.value) {
@@ -133,7 +126,6 @@ watch([selectedDate, selectedGrade, selectedClass], () => {
   margin: 0 auto;
   padding: 16px;
   box-sizing: border-box;
-  padding-bottom: 100px;
 }
 
 .header {
@@ -210,39 +202,5 @@ watch([selectedDate, selectedGrade, selectedClass], () => {
   font-size: 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
-}
-
-.footer-nav {
-  display: none;
-}
-
-.global-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  background-color: #f8f8f8;
-  border-top: 1px solid #ccc;
-  padding: 16px 0;
-  z-index: 100;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  font-weight: bold;
-  color: gray;
-  cursor: pointer;
-}
-
-.nav-btn.active {
-  color: black;
-}
-
-i {
-  font-size: 18px;
 }
 </style>

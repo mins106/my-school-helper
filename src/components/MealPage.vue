@@ -1,124 +1,177 @@
 <template>
-  <div class="meal-wrapper">
-    <div v-for="(meal, index) in meals" :key="index" class="meal-box">
-      <div class="meal-date">{{ formatDate(meal.date) }}</div>
-      <table class="meal-table">
-        <tr>
-          <td class="kcal">{{ meal.kcal }} Kcal</td>
-          <td class="review">
-            리뷰<br />
-            <div class="stars">★★★★★</div>
-            <i class="fas fa-pen"></i>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2" class="menu-list">
-            <div v-for="line in formatMenu(meal.menu)" :key="line">{{ line }}</div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2" class="see-more">리뷰보기</td>
-        </tr>
-      </table>
+  <div class="wrapper">
+    <header class="header">
+      <div class="logo-section">
+        <img src="/logo.png" alt="로고" class="logo" />
+        <span class="school-name">용인 동백중</span>
+      </div>
+      <div class="icon-section">
+        <i class="fas fa-search"></i>
+        <i class="fas fa-user-circle"></i>
+      </div>
+    </header>
+
+    <div v-for="(meal, index) in meals" :key="index" class="meal-card">
+      <div class="meal-date">{{ meal.date }}</div>
+      <div class="meal-content">
+        <div class="meal-left">
+          <div class="kcal">{{ meal.kcal }}</div>
+          <ul class="menu">
+            <li v-for="(item, i) in meal.menu" :key="i">{{ item }}</li>
+          </ul>
+        </div>
+        <div class="meal-right">
+          <div class="review-title">리뷰</div>
+          <div class="stars">
+            <span v-for="n in 5" :key="n">{{ n <= meal.rating ? '★' : '☆' }}</span>
+          </div>
+          <i class="fas fa-pen edit-icon"></i>
+        </div>
+      </div>
+      <div class="more">리뷰보기</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-
-const meals = ref([])
-
-onMounted(async () => {
-  const today = new Date()
-  const dates = [0, 1].map(offset => {
-    const d = new Date(today)
-    d.setDate(today.getDate() + offset)
-    return d.toISOString().substring(0, 10).replace(/-/g, '')
-  })
-
-  const result = []
-  for (const date of dates) {
-    try {
-      const res = await fetch(`http://localhost:3001/api/meal?date=${date}`)
-      const data = await res.json()
-      result.push({ date, menu: data.meal, kcal: data.kcal || '0.0' })
-    } catch (e) {
-      result.push({ date, menu: '급식 정보 없음', kcal: '0.0' })
-    }
+const meals = [
+  {
+    date: '5월 7일',
+    kcal: '981.7 Kcal',
+    rating: 4,
+    menu: [
+      '달걀꽃우밥',
+      '쉬림프빠오',
+      '마라탕',
+      '배추겉절이(동)',
+      '요플레(딸기)',
+      '사과주스'
+    ]
+  },
+  {
+    date: '5월 8일',
+    kcal: '709.1 Kcal',
+    rating: 3,
+    menu: [
+      '흑미기장밥',
+      '얼무된장국',
+      '국물떡볶이(부)',
+      '간장(돼지)불고기',
+      '총각김치',
+      '완자강정',
+      '샐러드',
+      '모듬쌈',
+      '아이스망고'
+    ]
   }
-  meals.value = result
-})
-
-const formatDate = (dateStr) => {
-  const date = new Date(`${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6)}`)
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`
-}
-
-const formatMenu = (menuText) => {
-  return menuText.split(/\n|<br\/>/).map(s => s.trim()).filter(Boolean)
-}
+]
 </script>
 
 <style scoped>
-.meal-wrapper {
-  max-width: 400px;
+.wrapper {
+  max-width: 600px;
   margin: 0 auto;
-  padding-bottom: 80px;
+  padding: 16px;
+  font-family: 'Arial', sans-serif;
+  
 }
 
-.meal-box {
-  border: 1px solid #aaa;
-  margin-bottom: 16px;
-  background-color: #f9f9f9;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+}
+
+.icon-section {
+  display: flex;
+  gap: 12px;
+  font-size: 20px;
+}
+
+.meal-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
+  overflow: hidden;
 }
 
 .meal-date {
-  background-color: #e0e0e0;
+  background-color: #4b6cb7;
+  color: white;
+  padding: 10px;
   text-align: center;
   font-weight: bold;
-  padding: 6px;
+  font-size: 16px;
 }
 
-.meal-table {
-  width: 100%;
-  border-collapse: collapse;
+.meal-content {
+  display: flex;
+  padding: 16px;
 }
 
-.meal-table td {
-  padding: 8px;
-  border: 1px solid #ccc;
-  vertical-align: top;
+.meal-left {
+  flex: 2;
 }
 
 .kcal {
-  width: 60%;
+  font-size: 15px;
   font-weight: bold;
+  margin-bottom: 8px;
 }
 
-.review {
-  width: 40%;
-  text-align: center;
+.menu {
+  padding-left: 16px;
+  margin: 0;
   font-size: 14px;
+  line-height: 1.6;
+  color: #333;
 }
 
-.stars {
-  font-size: 16px;
-  color: gold;
-  margin: 4px 0;
-}
-
-.menu-list {
-  font-size: 13px;
-  white-space: pre-line;
-  line-height: 1.4;
+.meal-right {
+  flex: 1;
+  text-align: center;
+  border-left: 1px solid #ddd;
   padding-left: 12px;
 }
 
-.see-more {
+.review-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.stars {
+  font-size: 18px;
+  color: #f0c000;
+  margin-bottom: 6px;
+}
+
+.edit-icon {
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.more {
   text-align: right;
   font-size: 12px;
-  color: gray;
-  padding-right: 8px;
+  padding: 8px 12px;
+  color: #888;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
 }
 </style>

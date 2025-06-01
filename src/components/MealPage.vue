@@ -11,8 +11,12 @@
       </div>
     </header>
 
-    <div v-for="(meal, index) in meals" :key="index" class="meal-card">
-      <div class="meal-date">{{ meal.date }}</div>
+    <!-- 날짜 선택 -->
+    <input type="date" v-model="selectedDate" @change="handleDateChange" />
+
+    <!-- 급식 카드 -->
+    <div v-if="meal" class="meal-card">
+      <div class="meal-date">{{ formattedDate }}</div>
       <div class="meal-content">
         <div class="meal-left">
           <div class="kcal">{{ meal.kcal }}</div>
@@ -23,48 +27,60 @@
         <div class="meal-right">
           <div class="review-title">리뷰</div>
           <div class="stars">
-            <span v-for="n in 5" :key="n">{{ n <= meal.rating ? '★' : '☆' }}</span>
+            <span v-for="n in 5" :key="n">{{ n <= rating ? '★' : '☆' }}</span>
           </div>
           <i class="fas fa-pen edit-icon"></i>
         </div>
       </div>
       <div class="more">리뷰보기</div>
     </div>
+
+    <!-- 급식 없음 -->
+    <div v-else>
+      <p style="text-align: center; margin-top: 20px;">🍽️ 급식 정보가 없습니다.</p>
+    </div>
   </div>
 </template>
 
 <script setup>
-const meals = [
-  {
-    date: '5월 7일',
-    kcal: '981.7 Kcal',
-    rating: 4,
-    menu: [
-      '달걀꽃우밥',
-      '쉬림프빠오',
-      '마라탕',
-      '배추겉절이(동)',
-      '요플레(딸기)',
-      '사과주스'
-    ]
-  },
-  {
-    date: '5월 8일',
-    kcal: '709.1 Kcal',
-    rating: 3,
-    menu: [
-      '흑미기장밥',
-      '얼무된장국',
-      '국물떡볶이(부)',
-      '간장(돼지)불고기',
-      '총각김치',
-      '완자강정',
-      '샐러드',
-      '모듬쌈',
-      '아이스망고'
-    ]
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+
+// 선택한 날짜
+const selectedDate = ref(new Date().toISOString().slice(0, 10))
+// 급식 정보
+const meal = ref(null)
+// 별점
+const rating = ref(0)
+
+// 급식 API 호출
+const fetchMeal = async () => {
+  const dateStr = selectedDate.value.replace(/-/g, '')
+  try {
+    const res = await axios.get(`http://localhost:3001/api/meal?date=${dateStr}`)
+    meal.value = res.data
+    rating.value = Math.floor(Math.random() * 5) + 1  // 랜덤 별점
+  } catch (err) {
+    console.error('급식 불러오기 실패:', err)
+    meal.value = null
   }
-]
+}
+
+// 날짜 변경 시 호출
+const handleDateChange = () => {
+  fetchMeal()
+}
+
+// 날짜 포맷
+const formattedDate = computed(() => {
+  const date = new Date(selectedDate.value)
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`
+})
+
+// 페이지 최초 로딩 시
+onMounted(() => {
+  fetchMeal()
+})
 </script>
 
 <style scoped>
@@ -73,7 +89,6 @@ const meals = [
   margin: 0 auto;
   padding: 16px;
   font-family: 'Arial', sans-serif;
-  
 }
 
 .header {
@@ -100,6 +115,13 @@ const meals = [
   display: flex;
   gap: 12px;
   font-size: 20px;
+}
+
+input[type="date"] {
+  display: block;
+  margin: 0 auto 20px;
+  padding: 6px 12px;
+  font-size: 16px;
 }
 
 .meal-card {

@@ -3,9 +3,11 @@ const express = require('express');
 const Timetable = require('comcigan-parser');
 const cors = require('cors');
 const axios = require('axios');
+const db = require('./db')
 
 const app = express();
 app.use(cors());
+app.use(express.json())
 
 const timetable = new Timetable();
 
@@ -73,6 +75,36 @@ app.get('/api/meal', async (req, res) => {
     res.status(500).send('서버 내부 오류');
   }
 });
+
+// 리뷰 저장 API
+app.post('/api/review', (req, res) => {
+  const { date, rating, text } = req.body;
+
+  try {
+    const numericRating = parseInt(rating);
+    const createdAt = new Date().toISOString(); // 한국시간으로 하고 싶으면 +9시간 더해도 OK
+    const stmt = db.prepare('INSERT INTO reviews (dateCode, rating, text, createdAt) VALUES (?, ?, ?, ?)');
+    const info = stmt.run(date, numericRating, text, createdAt);
+
+    res.status(201).json({
+      id: info.lastInsertRowid,
+      dateCode: date,
+      rating: numericRating,
+      text,
+      createdAt
+    });
+  } catch (err) {
+    console.error('리뷰 저장 오류:', err);
+    res.status(500).json({ error: '저장 실패' });
+  }
+});
+
+// 특정 날짜 리뷰 조회
+app.get('/api/review/:dateCode', (req, res) => {
+  const stmt = db.prepare('SELECT * FROM reviews WHERE dateCode = ? ORDER BY createdAt DESC')
+  const reviews = stmt.all(req.params.dateCode)
+  res.json(reviews)
+})
 
 // ✅ 서버는 맨 마지막에 시작해야 함!
 app.listen(3001, () => {

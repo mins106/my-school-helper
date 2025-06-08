@@ -5,39 +5,36 @@
         <img src="/logo.png" alt="로고" class="logo" />
         <span class="school-name">용인 동백중</span>
       </div>
-      <div class="icon-section">
-        <i class="fas fa-search"></i>
-        <i class="fas fa-user-circle"></i>
-      </div>
     </header>
 
-    <!-- 날짜 선택 -->
-    <input type="date" v-model="selectedDate" @change="handleDateChange" />
+    <div class="week-control">
+      <button @click="changeWeek(-1)">⬅️ 지난 주</button>
+      <span>{{ weekLabel }}</span>
+      <button @click="changeWeek(1)">다음 주 ➡️</button>
+    </div>
 
-    <!-- 급식 카드 -->
-    <div v-if="meal" class="meal-card">
-      <div class="meal-date">{{ formattedDate }}</div>
+    <div v-for="(meal, index) in meals" :key="index" class="meal-card">
+      <div class="meal-date">{{ meal.date }}</div>
       <div class="meal-content">
         <div class="meal-left">
           <div class="kcal">{{ meal.kcal }}</div>
-          <ul class="menu">
+          <ul v-if="meal.menu.length" class="menu">
             <li v-for="(item, i) in meal.menu" :key="i">{{ item }}</li>
           </ul>
+          <p v-else style="color: gray;">급식 정보가 없습니다.</p>
         </div>
-        <div class="meal-right">
+        <div class="meal-right" v-if="meal.menu.length">
           <div class="review-title">리뷰</div>
           <div class="stars">
-            <span v-for="n in 5" :key="n">{{ n <= rating ? '★' : '☆' }}</span>
+            <span v-for="n in 5" :key="n">{{ n <= meal.rating ? '★' : '☆' }}</span>
           </div>
-          <i class="fas fa-pen edit-icon"></i>
+          <div class="review-actions">
+            <router-link :to="`/review/${meal.dateCode}`" class="review-link">✏️ 리뷰 남기기</router-link>
+            <router-link :to="`/review/${meal.dateCode}/view`" class="review-link">👀 리뷰 보기</router-link>
+          </div>
         </div>
+        <i class="fas fa-pen edit-icon"></i>
       </div>
-      <div class="more">리뷰보기</div>
-    </div>
-
-    <!-- 급식 없음 -->
-    <div v-else>
-      <p style="text-align: center; margin-top: 20px;">🍽️ 급식 정보가 없습니다.</p>
     </div>
   </div>
 </template>
@@ -46,40 +43,66 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
-// 선택한 날짜
-const selectedDate = ref(new Date().toISOString().slice(0, 10))
-// 급식 정보
-const meal = ref(null)
-// 별점
-const rating = ref(0)
+const meals = ref([])
+const currentWeekOffset = ref(0) // 0: 이번 주, 1: 다음 주, -1: 지난 주
 
-// 급식 API 호출
-const fetchMeal = async () => {
-  const dateStr = selectedDate.value.replace(/-/g, '')
-  try {
-    const res = await axios.get(`http://localhost:3001/api/meal?date=${dateStr}`)
-    meal.value = res.data
-    rating.value = Math.floor(Math.random() * 5) + 1  // 랜덤 별점
-  } catch (err) {
-    console.error('급식 불러오기 실패:', err)
-    meal.value = null
+const getWeekDates = (weekOffset = 0) => {
+  const dates = []
+  const today = new Date()
+  const monday = new Date(today)
+  const dayOfWeek = today.getDay()
+  monday.setDate(monday.getDate() - dayOfWeek + 1 + weekOffset * 7) // 월요일로 조정
+
+  for (let i = 0; i < 5; i++) { // 월~금
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    const formatted = d.toISOString().slice(0, 10)
+    const label = `${d.getMonth() + 1}월 ${d.getDate()}일`
+    dates.push({ formatted, label })
+  }
+  return dates
+}
+
+const fetchMeals = async () => {
+  meals.value = []
+  const dates = getWeekDates(currentWeekOffset.value)
+
+  for (const { formatted, label } of dates) {
+    const yyyymmdd = formatted.replace(/-/g, '')
+    try {
+      const res = await axios.get(`http://localhost:3001/api/meal?date=${yyyymmdd}`)
+      meals.value.push({
+        date: label,
+        dateCode: yyyymmdd,
+        kcal: res.data.kcal,
+        menu: res.data.menu,
+        rating: Math.floor(Math.random() * 5) + 1
+      })
+    } catch (err) {
+      meals.value.push({
+        date: label,
+        kcal: '-',
+        menu: [],
+        rating: 0
+      })
+    }
   }
 }
 
-// 날짜 변경 시 호출
-const handleDateChange = () => {
-  fetchMeal()
+const changeWeek = (offsetChange) => {
+  currentWeekOffset.value += offsetChange
+  fetchMeals()
 }
 
-// 날짜 포맷
-const formattedDate = computed(() => {
-  const date = new Date(selectedDate.value)
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`
+const weekLabel = computed(() => {
+  if (currentWeekOffset.value === 0) return '이번 주'
+  if (currentWeekOffset.value === 1) return '다음 주'
+  if (currentWeekOffset.value === -1) return '지난 주'
+  return `${currentWeekOffset.value > 0 ? currentWeekOffset.value : -currentWeekOffset.value}주차 ${currentWeekOffset.value > 0 ? '후' : '전'}`
 })
 
-// 페이지 최초 로딩 시
 onMounted(() => {
-  fetchMeal()
+  fetchMeals()
 })
 </script>
 
@@ -127,7 +150,7 @@ input[type="date"] {
 .meal-card {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 24px;
   overflow: hidden;
 }
@@ -195,5 +218,56 @@ input[type="date"] {
   color: #888;
   background: #f9f9f9;
   border-top: 1px solid #eee;
+}
+
+.review-button {
+  all: unset;
+  /* 버튼 기본 스타일 제거 */
+  color: #888888;
+  /* 회색 글씨 */
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.review-button:hover {
+  color: #555555;
+  /* 호버 시 살짝 진한 회색 */
+}
+
+.week-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.week-control button {
+  background: none;
+  border: none;
+  color: #4b6cb7;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.review-link {
+  all: unset;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  text-align: center;
+}
+
+.review-link:hover {
+  color: #555;
 }
 </style>

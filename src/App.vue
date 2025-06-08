@@ -1,44 +1,39 @@
 <template>
   <div class="app-wrapper">
-    <div>
-      <MealPage v-if="currentPage === 'meal'" />
-      <TimeTable v-else-if="currentPage === 'timetable'" />
-      <CalendarPage v-else />
-    </div>
+    <!-- 현재 라우트에 해당하는 컴포넌트를 보여줌 -->
+    <router-view />
 
+    <!-- 하단 탭 네비게이션 -->
     <footer class="bottom-nav">
-      <button
+      <router-link
+        to="/meals"
         class="nav-item"
-        :class="{ active: currentPage === 'meal' }"
-        @click="currentPage = 'meal'"
+        :class="{ active: $route.path.startsWith('/meals') }"
       >
-        <div class="icon-label">🍴<br><span>급식</span></div>
-      </button>
-      <button
+        <div class="icon-label">🍴<br /><span>급식</span></div>
+      </router-link>
+
+      <router-link
+        to="/timetable"
         class="nav-item"
-        :class="{ active: currentPage === 'timetable' }"
-        @click="currentPage = 'timetable'"
+        :class="{ active: $route.path.startsWith('/timetable') }"
       >
-        <div class="icon-label">🕒<br><span>시간표</span></div>
-      </button>
-      <button
+        <div class="icon-label">🕒<br /><span>시간표</span></div>
+      </router-link>
+
+      <router-link
+        to="/calendar"
         class="nav-item"
-        :class="{ active: currentPage === 'calendar' }"
-        @click="currentPage = 'calendar'"
+        :class="{ active: $route.path.startsWith('/calendar') }"
       >
-        <div class="icon-label">📅<br><span>달력</span></div>
-      </button>
+        <div class="icon-label">📅<br /><span>달력</span></div>
+      </router-link>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import TimeTable from './components/TimeTable.vue'
-import MealPage from './components/MealPage.vue'
-import CalendarPage from './components/CalendarPage.vue'
-
-const currentPage = ref('timetable')
+// 이제 currentPage는 필요 없음!
 </script>
 
 <style scoped>
@@ -70,6 +65,7 @@ const currentPage = ref('timetable')
   text-align: center;
   flex: 1;
   border: none;
+  text-decoration: none;
 }
 
 .nav-item.active {

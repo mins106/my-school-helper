@@ -25,9 +25,13 @@
         </div>
         <div class="meal-right" v-if="meal.menu.length">
           <div class="review-title">리뷰</div>
-          <div class="stars">
-            <span v-for="n in 5" :key="n">{{ n <= meal.rating ? '★' : '☆' }}</span>
+          <div v-if="meal.rating > 0">
+            <div class="stars">
+              <span v-for="n in 5" :key="n" :class="{ selected: n <= Math.round(meal.rating) }">★</span>
+            </div>
+            <p class="score">({{ meal.rating.toFixed(1) }}점)</p>
           </div>
+          <div v-else class="no-review">아직 리뷰 없음</div>
           <div class="review-actions">
             <router-link :to="`/review/${meal.dateCode}`" class="review-link">✏️ 리뷰 남기기</router-link>
             <router-link :to="`/review/${meal.dateCode}/view`" class="review-link">👀 리뷰 보기</router-link>
@@ -40,11 +44,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 
 const meals = ref([])
-const currentWeekOffset = ref(0) // 0: 이번 주, 1: 다음 주, -1: 지난 주
+const currentWeekOffset = ref(0)
+const route = useRoute()
 
 const getWeekDates = (weekOffset = 0) => {
   const dates = []
@@ -69,23 +75,33 @@ const fetchMeals = async () => {
 
   for (const { formatted, label } of dates) {
     const yyyymmdd = formatted.replace(/-/g, '')
+    let mealData = { kcal: '-', menu: [] }
+    let rating = 0
+
     try {
       const res = await axios.get(`http://localhost:3001/api/meal?date=${yyyymmdd}`)
-      meals.value.push({
-        date: label,
-        dateCode: yyyymmdd,
+      mealData = {
         kcal: res.data.kcal,
-        menu: res.data.menu,
-        rating: Math.floor(Math.random() * 5) + 1
-      })
+        menu: res.data.menu
+      }
     } catch (err) {
-      meals.value.push({
-        date: label,
-        kcal: '-',
-        menu: [],
-        rating: 0
-      })
+      console.warn(`🍽️ 급식 정보 없음 (${yyyymmdd})`)
     }
+
+    try {
+      const reviewRes = await axios.get(`http://localhost:3001/api/review/${yyyymmdd}/avg`)
+      rating = reviewRes.data.avg ? Number(reviewRes.data.avg) : 0
+    } catch (err) {
+      console.warn(`⭐ 리뷰 평균 정보 없음 (${yyyymmdd})`)
+    }
+
+    meals.value.push({
+      date: label,
+      dateCode: yyyymmdd,
+      kcal: mealData.kcal,
+      menu: mealData.menu,
+      rating
+    })
   }
 }
 
@@ -98,13 +114,19 @@ const weekLabel = computed(() => {
   if (currentWeekOffset.value === 0) return '이번 주'
   if (currentWeekOffset.value === 1) return '다음 주'
   if (currentWeekOffset.value === -1) return '지난 주'
-  return `${currentWeekOffset.value > 0 ? currentWeekOffset.value : -currentWeekOffset.value}주차 ${currentWeekOffset.value > 0 ? '후' : '전'}`
+  return `${Math.abs(currentWeekOffset.value)}주차 ${currentWeekOffset.value > 0 ? '후' : '전'}`
 })
 
 onMounted(() => {
   fetchMeals()
 })
+
+watch(() => route.fullPath, () => {
+  fetchMeals()
+})
+
 </script>
+
 
 <style scoped>
 .wrapper {
@@ -201,8 +223,12 @@ input[type="date"] {
 
 .stars {
   font-size: 18px;
-  color: #f0c000;
+  color: #ddd; /* 비활성 별 회색 */
   margin-bottom: 6px;
+}
+
+.stars .selected {
+  color: #f0c000; /* 활성 별 노란색 */
 }
 
 .edit-icon {

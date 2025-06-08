@@ -106,6 +106,18 @@ app.get('/api/review/:dateCode', (req, res) => {
   res.json(reviews)
 })
 
+// 평균 별점 조회 API
+app.get('/api/review/:dateCode/avg', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT AVG(rating) as avg FROM reviews WHERE dateCode = ?')
+    const row = stmt.get(req.params.dateCode)
+    res.json({ avg: row?.avg || 0 })
+  } catch (err) {
+    console.error('평균 별점 조회 오류:', err)
+    res.status(500).json({ error: '평균 조회 실패' })
+  }
+})
+
 // ✅ 서버는 맨 마지막에 시작해야 함!
 app.listen(3001, () => {
   console.log('✅ 서버 실행 중: http://localhost:3001');

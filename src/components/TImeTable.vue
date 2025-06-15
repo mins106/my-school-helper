@@ -57,7 +57,10 @@
             <td>{{ index + 1 }}</td>
             <td>{{ item.subject || '-' }}</td>
             <td>
-              <input v-model="memos[index]" type="text" class="memo-input" placeholder="메모..." />
+              <div class="memo-buttons">
+                <button class="memo-write" @click="goToMemoPage(index + 1, 'write')">📝 쓰기</button>
+                <button class="memo-view" @click="goToMemoPage(index + 1, 'view')">👁 보기</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -67,7 +70,11 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import Cookies from 'js-cookie'
+
+const router = useRouter()
 
 const selectedDate = ref(new Date().toISOString().substring(0, 10))
 const selectedGrade = ref('')
@@ -76,6 +83,24 @@ const classOptions = ref([])
 const timetable = ref([])
 const memos = ref([])
 
+const goToMemoPage = (period, mode) => {
+  const date = selectedDate.value
+  const grade = selectedGrade.value
+  const classNo = selectedClass.value
+
+  if (mode === 'write') {
+    router.push({
+      name: 'MemoPage',
+      query: { date, period, grade, classNo, mode }
+    })
+  } else {
+    router.push({
+      name: 'MemoViewPage',
+      query: { date, period, grade, classNo }
+    })
+  }
+}
+
 const isWeekend = computed(() => {
   const day = new Date(selectedDate.value).getDay()
   return day === 0 || day === 6 // 일요일 or 토요일
@@ -83,6 +108,7 @@ const isWeekend = computed(() => {
 
 // 학년이 바뀔 때 반 개수 설정
 watch(selectedGrade, (newGrade) => {
+  Cookies.set('selectedGrade', newGrade)
   if (newGrade === '1' || newGrade === '2') {
     classOptions.value = Array.from({ length: 13 }, (_, i) => (i + 1).toString())
   } else if (newGrade === '3') {
@@ -91,6 +117,14 @@ watch(selectedGrade, (newGrade) => {
     classOptions.value = []
   }
   selectedClass.value = ''
+})
+
+watch(selectedClass, (newClass) => {
+  Cookies.set('selectedClass', newClass)
+})
+
+watch(selectedDate, (newDate) => {
+  Cookies.set('selectedDate', newDate)
 })
 
 // 시간표 불러오기
@@ -117,6 +151,23 @@ const fetchTimeTable = async () => {
 
 watch([selectedDate, selectedGrade, selectedClass], () => {
   fetchTimeTable()
+})
+
+onMounted(() => {
+  const savedGrade = Cookies.get('selectedGrade')
+  const savedClass = Cookies.get('selectedClass')
+  const savedDate = Cookies.get('selectedDate')
+
+  if (savedGrade) selectedGrade.value = savedGrade
+  if (savedDate) selectedDate.value = savedDate
+
+  // classOptions는 selectedGrade watch에서 자동 생성됨
+  if (savedClass) {
+    // grade 반영 후 classOptions 완성될 때까지 기다려야 하므로 지연 설정
+    setTimeout(() => {
+      selectedClass.value = savedClass
+    }, 0)
+  }
 })
 </script>
 
@@ -196,11 +247,41 @@ watch([selectedDate, selectedGrade, selectedClass], () => {
   background: transparent;
 }
 
-.memo-input {
-  width: 90%;
-  padding: 4px;
-  font-size: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.memo-buttons {
+  display: flex;
+  flex-direction: row; /* 세로 → 가로로 변경 */
+  gap: 8px;             /* 버튼 사이 간격 */
+  justify-content: center;
+  align-items: center;
+}
+
+.memo-buttons button {
+  width: 60px;
+  padding: 4px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.memo-write {
+  background-color: #f0f8ff;
+  color: #0074cc;
+  border: 1px solid #0074cc;
+}
+
+.memo-view {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #aaa;
+}
+
+.memo-write:hover {
+  background-color: #e0f0ff;
+}
+
+.memo-view:hover {
+  background-color: #eaeaea;
 }
 </style>

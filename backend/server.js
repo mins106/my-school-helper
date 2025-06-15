@@ -4,10 +4,12 @@ const Timetable = require('comcigan-parser');
 const cors = require('cors');
 const axios = require('axios');
 const db = require('./db')
+const hwpxParser = require('./hwpxParser');
 
 const app = express();
 app.use(cors());
 app.use(express.json())
+app.use('/api', hwpxParser);
 
 const timetable = new Timetable();
 
@@ -117,6 +119,56 @@ app.get('/api/review/:dateCode/avg', (req, res) => {
     res.status(500).json({ error: '평균 조회 실패' })
   }
 })
+
+// 메모 저장 API
+app.post('/api/memo', (req, res) => {
+  const { dateCode, period, grade, classNo, text, isPublic } = req.body;
+  console.log('[📥 메모 저장 요청]', req.body); // 추가!
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO memos (dateCode, period, grade, classNo, text, isPublic, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const createdAt = new Date().toISOString();
+    const result = stmt.run(
+      dateCode,
+      Number(period),
+      Number(grade),
+      Number(classNo),
+      text,
+      isPublic ? 1 : 0,
+      createdAt
+    );
+    res.status(201).json({ id: result.lastInsertRowid });
+  } catch (err) {
+    console.error('메모 저장 오류:', err);
+    res.status(500).json({ error: '메모 저장 실패' });
+  }
+});
+
+// 여러 메모 불러오기
+app.get('/api/memo', (req, res) => {
+  const { dateCode, period, grade, classNo } = req.query;
+
+  try {
+    const stmt = db.prepare(`
+      SELECT * FROM memos
+      WHERE dateCode = ? AND period = ? AND grade = ? AND classNo = ?
+      ORDER BY createdAt DESC
+    `);
+    const memos = stmt.all(
+      dateCode,
+      Number(period),
+      Number(grade),
+      Number(classNo)
+    );
+    res.json(memos);  // ✅ 여러 개를 배열로 반환
+  } catch (err) {
+    console.error('메모 불러오기 오류:', err);
+    res.status(500).json({ error: '불러오기 실패' });
+  }
+});
 
 // ✅ 서버는 맨 마지막에 시작해야 함!
 app.listen(3001, () => {
